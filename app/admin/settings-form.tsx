@@ -47,7 +47,7 @@ export default function SettingsForm({ initial }: { initial: Settings | null }) 
         <b>APIキー：{state?.configured ? '登録済み（内容は非表示）' : '未登録'}</b>
         {state?.configured && (
           <small>
-            利用枠：{state.paidTier ? '有料枠（課金有効）' : '無料枠（利用画面に注意を表示中）'}
+            利用枠：{state.paidTier ? '有料枠（課金有効）' : '無料枠（このままでは利用できません）'}
           </small>
         )}
         {state?.updatedAt && (
@@ -110,8 +110,8 @@ export default function SettingsForm({ initial }: { initial: Settings | null }) 
         このキーは、課金（Cloud Billing）を有効にしたGoogle Cloudプロジェクトのものです
       </label>
       <p className="admin-note">
-        無料枠のキーでは、送信した録音・資料がGoogleの製品改善に利用される場合があります。社内会議や個人情報を含む資料を扱う場合は、AI
-        Studioでプロジェクトの課金を有効にしてから、このチェックを入れてください。チェックがない間は、利用画面に「機密資料を送信しない」よう警告を表示します。
+        無料枠のキーでは、送信した録音・資料がGoogleの製品改善に利用される場合があるため、このアプリでは使用できません。AI
+        Studioでプロジェクトの課金を有効にしてから、このチェックを入れてください。チェックがないと共有試用を有効にできません。
       </p>
       <p className="admin-note">
         このキーのAPI利用料金は、キーの所有者に適用されます。有料APIの利用枠・無料枠はGoogle側で別に管理されます。
