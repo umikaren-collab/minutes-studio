@@ -1,6 +1,8 @@
 import { env } from 'cloudflare:workers';
+import Link from 'next/link';
 import { requireChatGPTUser, chatGPTSignOutPath } from '../chatgpt-auth';
 import { isOwner, settingsState } from '../../lib/api-settings.mjs';
+import { DAILY_LIMIT } from '../../lib/limits.mjs';
 import SettingsForm from './settings-form';
 import './admin.css';
 export const dynamic = 'force-dynamic';
@@ -15,7 +17,7 @@ export default async function Admin() {
         <a href={chatGPTSignOutPath('/admin')} target="_top">
           別のChatGPTアカウントでログインする
         </a>
-        <a href="/">議事録工房へ戻る</a>
+        <Link href="/">議事録工房へ戻る</Link>
       </main>
     );
   let initial = null;
@@ -24,7 +26,7 @@ export default async function Admin() {
   } catch {}
   return (
     <main className="admin-shell">
-      <a href="/">← 議事録工房へ戻る</a>
+      <Link href="/">← 議事録工房へ戻る</Link>
       <span className="admin-badge">オーナー専用</span>
       <h1>共有APIの管理</h1>
       <p>
@@ -32,7 +34,9 @@ export default async function Admin() {
       </p>
       <SettingsForm initial={initial} />
       <p className="admin-note">
-        APIキーは送信時にGoogleのモデル情報APIで利用可否を確認し、暗号化して保存します。保存済みのキーの全文は表示しません。全利用者合計で1日5回、日本時間0時にリセットします。キー登録後は、公開の試用画面からご利用ください。
+        APIキーは送信時にGoogleのモデル情報APIで利用可否を確認し、暗号化して保存します。保存済みのキーの全文は表示しません。全利用者合計で1日
+        {DAILY_LIMIT}
+        回、日本時間0時にリセットします。キー登録後は、公開の試用画面からご利用ください。
       </p>
       <a href={chatGPTSignOutPath('/')} target="_top">
         管理用ログインを終了

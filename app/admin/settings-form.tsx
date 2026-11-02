@@ -4,6 +4,7 @@ type Settings = {
   configured: boolean;
   model: string;
   enabled: boolean;
+  paidTier: boolean;
   updatedAt: string | null;
   dailyLimit: number;
 };
@@ -12,6 +13,7 @@ export default function SettingsForm({ initial }: { initial: Settings | null }) 
   const [key, setKey] = useState('');
   const [model, setModel] = useState(initial?.model || 'gemini-3.5-flash-lite');
   const [enabled, setEnabled] = useState(initial?.enabled ?? true);
+  const [paidTier, setPaidTier] = useState(initial?.paidTier ?? false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState(false);
@@ -25,7 +27,7 @@ export default function SettingsForm({ initial }: { initial: Settings | null }) 
       const response = await fetch('/api/admin/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: key, model, enabled }),
+        body: JSON.stringify({ apiKey: key, model, enabled, paidTier }),
       });
       const data = await response.json();
       if (!response.ok || !data.success) throw Error(data.error || '保存できませんでした。');
@@ -43,6 +45,11 @@ export default function SettingsForm({ initial }: { initial: Settings | null }) 
     <form className="admin-form" onSubmit={save}>
       <div className="admin-status">
         <b>APIキー：{state?.configured ? '登録済み（内容は非表示）' : '未登録'}</b>
+        {state?.configured && (
+          <small>
+            利用枠：{state.paidTier ? '有料枠（課金有効）' : '無料枠（利用画面に注意を表示中）'}
+          </small>
+        )}
         {state?.updatedAt && (
           <small>
             最終更新：
@@ -60,7 +67,11 @@ export default function SettingsForm({ initial }: { initial: Settings | null }) 
           spellCheck={false}
           value={key}
           disabled={busy}
-          onChange={(e) => setKey(e.target.value)}
+          onChange={(e) => {
+            setKey(e.target.value);
+            // 別のキーに差し替えるときは、そのキーの課金状態を改めて確認してもらう
+            if (e.target.value) setPaidTier(false);
+          }}
           placeholder={
             state?.configured
               ? '変更するときだけ新しいキーを入力'
@@ -87,8 +98,21 @@ export default function SettingsForm({ initial }: { initial: Settings | null }) 
           disabled={busy}
           onChange={(e) => setEnabled(e.target.checked)}
         />
-        共有試用を有効にする（全員合計1日5回）
+        共有試用を有効にする（全員合計1日{state?.dailyLimit ?? 5}回）
       </label>
+      <label className="admin-checkbox">
+        <input
+          type="checkbox"
+          checked={paidTier}
+          disabled={busy}
+          onChange={(e) => setPaidTier(e.target.checked)}
+        />
+        このキーは、課金（Cloud Billing）を有効にしたGoogle Cloudプロジェクトのものです
+      </label>
+      <p className="admin-note">
+        無料枠のキーでは、送信した録音・資料がGoogleの製品改善に利用される場合があります。社内会議や個人情報を含む資料を扱う場合は、AI
+        Studioでプロジェクトの課金を有効にしてから、このチェックを入れてください。チェックがない間は、利用画面に「機密資料を送信しない」よう警告を表示します。
+      </p>
       <p className="admin-note">
         このキーのAPI利用料金は、キーの所有者に適用されます。有料APIの利用枠・無料枠はGoogle側で別に管理されます。
       </p>

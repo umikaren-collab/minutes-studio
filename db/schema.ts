@@ -9,6 +9,7 @@ export const apiSettings = sqliteTable('api_settings', {
   iv: text('iv'),
   model: text('model').notNull(),
   enabled: integer('enabled').notNull(),
+  paidTier: integer('paid_tier').notNull().default(0),
   updatedAt: text('updated_at').notNull(),
   updatedBy: text('updated_by').notNull(),
 });
