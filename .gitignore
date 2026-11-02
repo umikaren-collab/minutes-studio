@@ -44,3 +44,6 @@ yarn-error.log*
 # OS metadata
 .DS_Store
 !.env.example
+
+# Local D1 config for docs/SETUP.md
+/wrangler.local.json

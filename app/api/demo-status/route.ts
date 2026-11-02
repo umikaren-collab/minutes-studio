@@ -1,0 +1,13 @@
+import { env } from 'cloudflare:workers';
+import { demoStatus } from '../../../lib/shared-demo.mjs';
+export const dynamic = 'force-dynamic';
+export async function GET(request: Request) {
+  try {
+    return await demoStatus(env, request);
+  } catch {
+    return Response.json(
+      { ready: false, remaining: 0, limit: 5, reason: '共有機能の準備中です。' },
+      { headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
+}
