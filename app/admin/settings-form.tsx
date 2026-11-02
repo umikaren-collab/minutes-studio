@@ -7,6 +7,7 @@ type Settings = {
   paidTier: boolean;
   updatedAt: string | null;
   dailyLimit: number;
+  dailyLimitMax?: number;
 };
 export default function SettingsForm({ initial }: { initial: Settings | null }) {
   const [state, setState] = useState(initial);
@@ -14,6 +15,7 @@ export default function SettingsForm({ initial }: { initial: Settings | null }) 
   const [model, setModel] = useState(initial?.model || 'gemini-3.5-flash-lite');
   const [enabled, setEnabled] = useState(initial?.enabled ?? true);
   const [paidTier, setPaidTier] = useState(initial?.paidTier ?? false);
+  const [dailyLimit, setDailyLimit] = useState(String(initial?.dailyLimit ?? 5));
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState(false);
@@ -27,9 +29,15 @@ export default function SettingsForm({ initial }: { initial: Settings | null }) 
       const response = await fetch('/api/admin/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: key, model, enabled, paidTier }),
+        body: JSON.stringify({
+          apiKey: key,
+          model,
+          enabled,
+          paidTier,
+          dailyLimit: Number(dailyLimit),
+        }),
       });
-      const data = await response.json();
+      const data = (await response.json()) as Settings & { success?: boolean; error?: string };
       if (!response.ok || !data.success) throw Error(data.error || '保存できませんでした。');
       setState(data);
       setKey('');
@@ -84,7 +92,7 @@ export default function SettingsForm({ initial }: { initial: Settings | null }) 
         Google AI StudioでAPIキーを取得・確認 ↗
       </a>
       <label>
-        共有試用で使うモデル
+        議事録作成に使うモデル
         <select value={model} disabled={busy} onChange={(e) => setModel(e.target.value)}>
           <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite</option>
           <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
@@ -98,8 +106,26 @@ export default function SettingsForm({ initial }: { initial: Settings | null }) 
           disabled={busy}
           onChange={(e) => setEnabled(e.target.checked)}
         />
-        共有試用を有効にする（全員合計1日{state?.dailyLimit ?? 5}回）
+        利用を受け付ける（招待コードを持っている人が作成できる状態にする）
       </label>
+      <label>
+        全員合計の1日の上限回数
+        <input
+          className="admin-number"
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={state?.dailyLimitMax ?? 200}
+          step={1}
+          required
+          value={dailyLimit}
+          disabled={busy}
+          onChange={(e) => setDailyLimit(e.target.value)}
+        />
+      </label>
+      <p className="admin-note">
+        招待コードごとの回数とは別に、全員の合計がこの回数に達するとその日は停止します。API料金の上限の目安として設定してください（日本時間0時にリセット）。
+      </p>
       <label className="admin-checkbox">
         <input
           type="checkbox"
@@ -111,7 +137,7 @@ export default function SettingsForm({ initial }: { initial: Settings | null }) 
       </label>
       <p className="admin-note">
         無料枠のキーでは、送信した録音・資料がGoogleの製品改善に利用される場合があるため、このアプリでは使用できません。AI
-        Studioでプロジェクトの課金を有効にしてから、このチェックを入れてください。チェックがないと共有試用を有効にできません。
+        Studioでプロジェクトの課金を有効にしてから、このチェックを入れてください。チェックがないと利用を受け付けられません。
       </p>
       <p className="admin-note">
         このキーのAPI利用料金は、キーの所有者に適用されます。有料APIの利用枠・無料枠はGoogle側で別に管理されます。

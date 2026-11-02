@@ -43,6 +43,8 @@
   margin: 20px 0 10px;
 }
 .admin-form input[type='password'],
+.admin-form .admin-text,
+.admin-form .admin-number,
 .admin-form select {
   box-sizing: border-box;
   width: 100%;
@@ -117,5 +119,122 @@
   }
   .admin-form {
     padding: 18px;
+  }
+}
+
+.admin-form .admin-number {
+  display: block;
+  max-width: 140px;
+}
+.codes-panel h2 {
+  font-size: 18px;
+  margin: 0 0 4px;
+}
+.code-create {
+  display: grid;
+  grid-template-columns: 1fr 140px;
+  gap: 0 14px;
+  align-items: end;
+}
+.code-create button {
+  grid-column: 1 / -1;
+}
+.code-issued {
+  margin-top: 18px;
+  padding: 16px;
+  border: 2px solid #226c58;
+  border-radius: 8px;
+  background: #f1f7f2;
+  font-size: 13px;
+}
+.code-issued code {
+  display: block;
+  margin: 10px 0;
+  font-size: 22px;
+  letter-spacing: 0.08em;
+  font-family: ui-monospace, Consolas, monospace;
+  color: #173f32;
+  user-select: all;
+  overflow-wrap: anywhere;
+}
+.code-issued small {
+  display: block;
+  color: #65776d;
+  line-height: 1.7;
+}
+.code-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+}
+.code-list li {
+  border-top: 1px solid #e3ece5;
+  padding: 14px 0;
+}
+.code-list li.is-off .code-head b {
+  color: #8a988f;
+}
+.code-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 14px;
+}
+.code-state {
+  flex-shrink: 0;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 99px;
+  background: #eef0ef;
+  color: #6c7a72;
+}
+.code-state.on {
+  background: #e3f2e8;
+  color: #226c58;
+}
+.code-meta {
+  font-size: 12px;
+  color: #728578;
+  margin: 6px 0 10px;
+}
+.code-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.admin-form .code-actions button {
+  width: auto;
+  margin: 0;
+  padding: 8px 14px;
+  font-size: 13px;
+}
+.admin-form button.quiet {
+  background: #fff;
+  color: #226c58;
+  border: 1px solid #baccbf;
+}
+.admin-form button.quiet.danger {
+  color: #ae4936;
+  border-color: #e2c3bb;
+}
+.admin-form .code-limit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 400;
+}
+.admin-form .code-limit select {
+  width: auto;
+  margin: 0;
+  padding: 7px 8px;
+  font-size: 13px;
+}
+@media (max-width: 480px) {
+  .code-create {
+    grid-template-columns: 1fr;
   }
 }

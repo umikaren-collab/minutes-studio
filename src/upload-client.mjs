@@ -16,7 +16,7 @@ export async function uploadForMinutes(
   files,
   template,
   prompt,
-  { signal, onProgress = () => {}, onJob = () => {}, fetchImpl = fetch } = {},
+  { signal, accessCode = '', onProgress = () => {}, onJob = () => {}, fetchImpl = fetch } = {},
 ) {
   const payload = [
     ...files.map((f) => ({ file: f, role: 'source' })),
@@ -39,7 +39,7 @@ export async function uploadForMinutes(
     onProgress({ phase: 'start' });
     job = await call('/api/uploads/start', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Access-Code': accessCode },
       body: JSON.stringify({
         files: payload.map(({ file, role }) => ({ size: file.size, mime: mediaType(file), role })),
       }),

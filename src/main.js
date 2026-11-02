@@ -18,13 +18,13 @@ import Docxtemplater from 'docxtemplater';
 import mammoth from 'mammoth/mammoth.browser';
 const $ = (s) => document.querySelector(s);
 $('#app').innerHTML =
-  `<header><a class="brand" href="/" aria-label="議事録工房 ホーム"><span class="logo">▤</span> 議事録工房 <small>MINUTES STUDIO</small></a><div class="header-actions"><span class="trialbadge">共有APIでお試し</span><a class="admin-link" href="/admin" target="_top">管理者設定</a></div></header>
-<main><div class="intro"><div><div class="eyebrow">会議の記録を、次の行動へ。</div><h1>話したことを、<span>伝わる議事録に。</span></h1><p>録音・動画・資料をまとめて、いつもの書式で仕上げましょう。</p></div><span class="private" id="limitBadge">◈ お試し版・全員合計1日5回</span></div>
+  `<header><a class="brand" href="/" aria-label="議事録工房 ホーム"><span class="logo">▤</span> 議事録工房 <small>MINUTES STUDIO</small></a><div class="header-actions"><span class="trialbadge">招待制</span><a class="admin-link" href="/admin" target="_top">管理者設定</a></div></header>
+<main><div class="intro"><div><div class="eyebrow">会議の記録を、次の行動へ。</div><h1>話したことを、<span>伝わる議事録に。</span></h1><p>録音・動画・資料をまとめて、いつもの書式で仕上げましょう。</p></div><span class="private" id="limitBadge">◈ 招待コードでご利用いただけます</span></div>
 <div class="workflow"><span class="active">01 <b>会議を設定</b></span><i></i><span>02 <b>資料を取り込む</b></span><i></i><span>03 <b>確認・Word出力</b></span></div>
 <div class="layout"><div class="inputs"><section><div class="sectiontitle"><span class="num">01</span><h2>会議の基本情報</h2><span class="optional">あとから変更できます</span></div><label>会議名<input id="title" placeholder="例：管理部 定例会議"></label><div class="row"><label>開催日<input id="date" type="date"></label><label>開始時刻<input id="time" type="time"></label><label>終了時刻<input id="end" type="time"></label></div><label>場所<input id="place" placeholder="例：本社会議室 ／ オンライン"></label><label>出席者<textarea id="attendees" rows="2" placeholder="氏名・役職などを入力（改行や読点で区切れます）"></textarea></label><label>議題<textarea id="agenda" rows="3" placeholder="1. 前回の確認事項&#10;2. 今月の業務状況&#10;3. 今後の対応"></textarea></label></section>
-<section><div class="sectiontitle"><span class="num">02</span><h2>会議の資料</h2><span class="optional">複数ファイル対応</span></div><div class="sourcechoices"><div class="sourcebutton nativecard"><span>▣</span><label for="files"><b>端末のファイルから</b></label><small>下の「ファイルを選択」を押してください</small><input class="nativefile" type="file" id="files" aria-label="会議資料のファイルを選択" multiple></div><button id="driveSource" class="sourcebutton" type="button"><span class="driveicon">△</span><b>Google ドライブから</b><small>端末のファイル選択画面を使用</small></button></div><div class="drop" id="drop"><span class="uploadicon">↥</span><strong>パソコンでは、ここにファイルをドロップ</strong><span>音声 WAV・M4A・MP3など ／ 動画 MP4 ／ 資料 PDF</span><small>1ファイル200MBまで・最大5件（合計500MB）</small></div><p id="importStatus" class="status importstatus" role="status" aria-live="polite">WAV・M4A・MP3・MP4・PDFなどを選択してください。追加されるとファイル名と件数が表示されます。</p><details class="pickerhelp"><summary>ファイル選択画面が開かない場合</summary><p>アプリ内の表示では、ファイル選択が使えない場合があります。下のリンクをChrome・Edge・Safariなどのブラウザーで開いてお試しください。</p><a href="https://shin-minutes-studio.artfulkey1.chatgpt.site/" target="_blank" rel="noopener">議事録工房をブラウザーで開く ↗</a><p>古い画面が出る場合は、ページを再読み込みしてください。入力途中の内容は消えます。</p></details><ul id="filelist" class="filelist"></ul><label>補足メモ・文字起こし <span class="optional">任意</span><textarea id="notes" rows="3" placeholder="資料の補足や、文字起こし済みのテキストを貼り付けられます"></textarea></label></section>
-<section><div class="sectiontitle"><span class="num">03</span><h2>仕上げの設定</h2></div><div class="format"><div class="formaticon">W</div><div><b id="formatname">標準のWord書式</b><p id="formatdesc">基本情報・議事内容・決定事項・次の対応</p></div><label class="templatepicker">書式を選ぶ<input class="nativefile" id="template" type="file" aria-label="議事録の書式ファイルを選択" accept=".docx,.pdf"></label><button id="clearTemplate" class="quiet" hidden aria-label="書式を解除">×</button></div><details><summary>指定書式の使い方</summary><p>Word（.docx）・PDFをアップロードできます。通常の書式は項目構成を参照してWordを作ります。PDFのレイアウトは再現しません。</p><p>Wordのレイアウトを保つには、本文や表に次の差し込み項目を配置してください。</p><code>{会議名} {日時} {場所} {出席者} {議題} {議事内容}</code><p>差し込み式の書式では、編集した本文が {議事内容} に入ります。</p><button id="sampleTemplate" class="quiet link">差し込み用Wordひな形をダウンロード ↓</button></details><div class="row"><label>まとめ方<select id="detail"><option>標準（要点と経緯）</option><option>簡潔（決定事項を中心に）</option><option>詳細（発言の経緯も記録）</option></select></label><label>文体<select id="tone"><option>である調</option><option>です・ます調</option></select></label></div><fieldset class="printsettings"><legend>印刷・Wordのページ設定</legend><div class="row"><label>用紙サイズ<select id="paper"><option>A4</option><option>A3</option><option>B5</option></select></label><label>用紙の向き<select id="orientation"><option value="portrait">縦</option><option value="landscape">横</option></select></label></div><div class="row"><label>余白（上下左右）<select id="margin"><option value="10">10 mm</option><option value="15">15 mm</option><option value="20" selected>20 mm</option><option value="25">25 mm</option><option value="30">30 mm</option></select></label><label>本文の文字サイズ<select id="fontSize"><option value="10">10 pt</option><option value="10.5">10.5 pt</option><option value="11" selected>11 pt</option><option value="12">12 pt</option><option value="14">14 pt</option></select></label></div><label>行間<select id="lineSpacing"><option value="1">1.0 倍</option><option value="1.15" selected>1.15 倍</option><option value="1.5">1.5 倍</option><option value="2">2.0 倍</option></select></label><label class="consent"><input id="keepTemplatePrint" type="checkbox" checked><span>差し込み式のWord書式を使用する場合は、書式のページ設定を優先する</span></label><p id="printSummary" class="printsummary" role="status"></p><p class="hint">Word出力に反映します。差し込み式のWord書式では文字サイズ・行間は書式の設定を維持します。上のチェックを外すと、用紙・向き・余白を変更します。印刷枚数は本文の量によって変わります。両面印刷・部数はWordの印刷画面で指定してください。</p></fieldset><label>作成時の指示<textarea id="instruction" rows="2" placeholder="例：担当者と期限を明記。不明な点は「要確認」とする。"></textarea></label><label class="consent"><input id="consent" type="checkbox"><span>選択した資料・書式・入力内容をGoogleのGemini APIに送信して作成します。</span></label><p id="sharedInfo" class="printsummary" role="status">共有試用の状態を確認しています…</p><button class="primary" id="generate">✧ 議事録を作成する <span>→</span></button><button id="cancel" class="quiet" hidden>処理を中止</button><p id="status" class="status" role="status" aria-live="polite">共有試用の状態を確認しています。APIキーは利用者の入力不要です。</p></section></div>
-<aside><section class="output"><div class="sectiontitle"><span class="num">04</span><h2>議事録プレビュー</h2><span class="badge">編集できます</span></div><div id="empty"><div class="papericon">▤</div><h3>ここに議事録ができあがります</h3><p>資料を取り込み「議事録を作成する」を押すと、<br>内容を確認・修正してWordで保存できます。</p><button class="quiet link" id="demo">サンプルで操作を試す →</button></div><div id="result" hidden><div class="documenthead"><small>MEETING MINUTES</small><h2 id="previewTitle"></h2><p id="previewMeta"></p></div><label for="body" class="editorlabel">議事内容・決定事項・次の対応</label><textarea id="body" spellcheck="false" placeholder="ここで議事録を直接編集することもできます。"></textarea><p class="hint">AIの出力は、氏名・数値・決定事項を原資料と照合してください。</p></div><div class="outputactions"><button id="download" class="primary" disabled>↓ Wordでダウンロード</button><div class="row"><button id="copy" class="secondary" disabled>本文をコピー</button><button id="manual" class="secondary">手入力で作成</button></div></div></section><div class="tip"><span>✦</span><div><b>会議の「その後」まで、明確に。</b><p>決定事項と、誰が・何を・いつまでに行うかを整理。不明な情報は推測せず「要確認」と記載します。</p></div></div><p class="localnote">会議資料・議事録はこのアプリのサーバーに保存しません。APIキーは管理者のみが変更できるサーバー設定で管理します。画面を閉じると編集内容は消えるため、必要な議事録はWordで保存してください。</p></aside></div><footer>議事録工房 <span>記録を整え、仕事を進める。 v1.8（200MB分割アップロード対応）</span></footer></main>
+<section><div class="sectiontitle"><span class="num">02</span><h2>会議の資料</h2><span class="optional">複数ファイル対応</span></div><div class="sourcechoices"><div class="sourcebutton nativecard"><span>▣</span><label for="files"><b>端末のファイルから</b></label><small>下の「ファイルを選択」を押してください</small><input class="nativefile" type="file" id="files" aria-label="会議資料のファイルを選択" multiple></div><button id="driveSource" class="sourcebutton" type="button"><span class="driveicon">△</span><b>Google ドライブから</b><small>端末のファイル選択画面を使用</small></button></div><div class="drop" id="drop"><span class="uploadicon">↥</span><strong>パソコンでは、ここにファイルをドロップ</strong><span>音声 WAV・M4A・MP3など ／ 動画 MP4 ／ 資料 PDF</span><small>1ファイル200MBまで・最大5件（合計500MB）</small></div><p id="importStatus" class="status importstatus" role="status" aria-live="polite">WAV・M4A・MP3・MP4・PDFなどを選択してください。追加されるとファイル名と件数が表示されます。</p><details class="pickerhelp"><summary>ファイル選択画面が開かない場合</summary><p>アプリ内の表示では、ファイル選択が使えない場合があります。下のリンクをChrome・Edge・Safariなどのブラウザーで開いてお試しください。</p><a id="openInBrowser" href="/" target="_blank" rel="noopener">議事録工房をブラウザーで開く ↗</a><p>古い画面が出る場合は、ページを再読み込みしてください。入力途中の内容は消えます。</p></details><ul id="filelist" class="filelist"></ul><label>補足メモ・文字起こし <span class="optional">任意</span><textarea id="notes" rows="3" placeholder="資料の補足や、文字起こし済みのテキストを貼り付けられます"></textarea></label></section>
+<section><div class="sectiontitle"><span class="num">03</span><h2>仕上げの設定</h2></div><div class="format"><div class="formaticon">W</div><div><b id="formatname">標準のWord書式</b><p id="formatdesc">基本情報・議事内容・決定事項・次の対応</p></div><label class="templatepicker">書式を選ぶ<input class="nativefile" id="template" type="file" aria-label="議事録の書式ファイルを選択" accept=".docx,.pdf"></label><button id="clearTemplate" class="quiet" hidden aria-label="書式を解除">×</button></div><details><summary>指定書式の使い方</summary><p>Word（.docx）・PDFをアップロードできます。通常の書式は項目構成を参照してWordを作ります。PDFのレイアウトは再現しません。</p><p>Wordのレイアウトを保つには、本文や表に次の差し込み項目を配置してください。</p><code>{会議名} {日時} {場所} {出席者} {議題} {議事内容}</code><p>差し込み式の書式では、編集した本文が {議事内容} に入ります。</p><button id="sampleTemplate" class="quiet link">差し込み用Wordひな形をダウンロード ↓</button></details><div class="row"><label>まとめ方<select id="detail"><option>標準（要点と経緯）</option><option>簡潔（決定事項を中心に）</option><option>詳細（発言の経緯も記録）</option></select></label><label>文体<select id="tone"><option>である調</option><option>です・ます調</option></select></label></div><fieldset class="printsettings"><legend>印刷・Wordのページ設定</legend><div class="row"><label>用紙サイズ<select id="paper"><option>A4</option><option>A3</option><option>B5</option></select></label><label>用紙の向き<select id="orientation"><option value="portrait">縦</option><option value="landscape">横</option></select></label></div><div class="row"><label>余白（上下左右）<select id="margin"><option value="10">10 mm</option><option value="15">15 mm</option><option value="20" selected>20 mm</option><option value="25">25 mm</option><option value="30">30 mm</option></select></label><label>本文の文字サイズ<select id="fontSize"><option value="10">10 pt</option><option value="10.5">10.5 pt</option><option value="11" selected>11 pt</option><option value="12">12 pt</option><option value="14">14 pt</option></select></label></div><label>行間<select id="lineSpacing"><option value="1">1.0 倍</option><option value="1.15" selected>1.15 倍</option><option value="1.5">1.5 倍</option><option value="2">2.0 倍</option></select></label><label class="consent"><input id="keepTemplatePrint" type="checkbox" checked><span>差し込み式のWord書式を使用する場合は、書式のページ設定を優先する</span></label><p id="printSummary" class="printsummary" role="status"></p><p class="hint">Word出力に反映します。差し込み式のWord書式では文字サイズ・行間は書式の設定を維持します。上のチェックを外すと、用紙・向き・余白を変更します。印刷枚数は本文の量によって変わります。両面印刷・部数はWordの印刷画面で指定してください。</p></fieldset><label>作成時の指示<textarea id="instruction" rows="2" placeholder="例：担当者と期限を明記。不明な点は「要確認」とする。"></textarea></label><div class="accessbox"><label for="accessCode">利用コード <span class="optional">管理者からお知らせしたコード</span></label><div class="accessrow"><input id="accessCode" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" maxlength="24" placeholder="XXXX-XXXX-XXXX-XXXX"><button id="saveCode" class="secondary" type="button">確認</button></div><button id="forgetCode" class="quiet link" type="button" hidden>この端末からコードを消す</button></div><label class="consent"><input id="consent" type="checkbox"><span>選択した資料・書式・入力内容をGoogleのGemini APIに送信して作成します。</span></label><p id="sharedInfo" class="printsummary" role="status">利用状況を確認しています…</p><button class="primary" id="generate">✧ 議事録を作成する <span>→</span></button><button id="cancel" class="quiet" hidden>処理を中止</button><p id="status" class="status" role="status" aria-live="polite">利用状況を確認しています…</p></section></div>
+<aside><section class="output"><div class="sectiontitle"><span class="num">04</span><h2>議事録プレビュー</h2><span class="badge">編集できます</span></div><div id="empty"><div class="papericon">▤</div><h3>ここに議事録ができあがります</h3><p>資料を取り込み「議事録を作成する」を押すと、<br>内容を確認・修正してWordで保存できます。</p><button class="quiet link" id="demo">サンプルで操作を試す →</button></div><div id="result" hidden><div class="documenthead"><small>MEETING MINUTES</small><h2 id="previewTitle"></h2><p id="previewMeta"></p></div><label for="body" class="editorlabel">議事内容・決定事項・次の対応</label><textarea id="body" spellcheck="false" placeholder="ここで議事録を直接編集することもできます。"></textarea><p class="hint">AIの出力は、氏名・数値・決定事項を原資料と照合してください。</p></div><div class="outputactions"><button id="download" class="primary" disabled>↓ Wordでダウンロード</button><div class="row"><button id="copy" class="secondary" disabled>本文をコピー</button><button id="manual" class="secondary">手入力で作成</button></div></div></section><div class="tip"><span>✦</span><div><b>会議の「その後」まで、明確に。</b><p>決定事項と、誰が・何を・いつまでに行うかを整理。不明な情報は推測せず「要確認」と記載します。</p></div></div><details class="guide" open><summary>ご利用にあたって</summary><ul><li><b>招待制です。</b>利用コードは、お渡しした方ご本人用です。他の方への転送・共有はご遠慮ください。1日の回数は日本時間0時にリセットされます。失敗した場合も、送信した時点で1回に数えます。</li><li><b>資料の送り先。</b>「議事録を作成する」を押すと、資料と入力内容をGoogleのGemini API（有料枠）に送って議事録を作ります。有料枠では、Googleの規約上、送信内容がGoogleの製品改善に使われることはありません（不正利用の監視のため、Google側で一定期間記録される場合があります）。</li><li><b>このアプリには残りません。</b>会議資料・議事録はこのアプリのサーバーに保存しません。Google側の一時ファイルも作成後に削除します。画面を閉じると編集内容は消えるため、必要な議事録はWordで保存してください。</li><li><b>必ず確認を。</b>AIの出力には誤りが含まれることがあります。氏名・数値・決定事項は原資料と照合してからお使いください。</li><li><b>送らないでほしいもの。</b>マイナンバー・口座番号・健康情報など特に慎重な扱いが必要な情報や、所属先の規程で外部サービスへの送信が禁じられている資料は送信しないでください。</li><li>お問い合わせ・コードの停止は、コードをお渡しした管理者にご連絡ください。</li></ul></details></aside></div><footer>議事録工房 <span>記録を整え、仕事を進める。 v1.9（招待コード対応）</span></footer></main>
 <dialog id="driveDialog"><div class="sectiontitle"><h2>Google ドライブから取り込む</h2><button id="closeDrive" class="quiet" type="button" aria-label="Googleドライブの案内を閉じる">×</button></div><p>端末のファイル選択画面に表示されるGoogle ドライブから、WAV・M4A・MP3・MP4・PDFなどを選びます。</p><div class="drivehelp"><b>Android（Xperiaなど）</b><p>下のボタンを押し、選択画面のメニュー（☰）や「参照」からGoogle ドライブ・Googleアカウントを選んでください。表示される場合は「ファイル」または「ドキュメント」を選ぶと、保存先を探せます。</p><b>Windows・Mac</b><p>パソコン版Google ドライブを利用している場合は、選択画面でGoogle ドライブのフォルダーを開いてください。</p><b>ドライブが選択先に表示されない場合</b><p>Google ドライブから資料を端末にダウンロードし、「端末のファイルから」で選んでください。端末・ブラウザー・ドライブアプリの設定により表示は異なります。</p></div><p class="hint">この取り込み方法は端末のファイル選択機能を使います。アプリ内でGoogle ドライブの一覧を表示・検索する直接連携は、現在未対応です。ファイルを選択しただけではAIに送信しません。</p><label class="drivefilelabel" for="driveFiles">ファイル選択画面からGoogle ドライブを選ぶ</label><input id="driveFiles" class="nativefile" type="file" aria-label="Googleドライブの資料をファイル選択画面で選択" multiple><a class="driveopen" href="https://drive.google.com/" target="_blank" rel="noopener">Google ドライブを別画面で開く ↗</a></dialog>`;
 let files = [],
   template = null,
@@ -60,22 +60,69 @@ function updatePrintSummary() {
 for (const id of ['paper', 'orientation', 'margin', 'fontSize', 'lineSpacing', 'keepTemplatePrint'])
   $('#' + id).addEventListener('change', updatePrintSummary);
 updatePrintSummary();
+// 利用コード：この端末のブラウザーにだけ保存する（サーバーには毎回送って確認する）
+const CODE_KEY = 'minutes-studio.accessCode';
+let accessCode = '';
+try {
+  accessCode = localStorage.getItem(CODE_KEY) || '';
+} catch {}
+$('#accessCode').value = accessCode;
+$('#openInBrowser').href = location.origin + '/';
+function storeCode(value) {
+  accessCode = value;
+  try {
+    if (value) localStorage.setItem(CODE_KEY, value);
+    else localStorage.removeItem(CODE_KEY);
+  } catch {}
+}
 async function refreshSharedStatus(announce = false) {
   try {
-    const r = await fetch('/api/demo-status', { cache: 'no-store' });
+    const r = await fetch('/api/demo-status', {
+      cache: 'no-store',
+      headers: accessCode ? { 'X-Access-Code': accessCode } : {},
+    });
     if (!r.ok) throw Error();
     sharedState = await r.json();
-    const limit = sharedState.limit || 5;
-    $('#limitBadge').textContent = `◈ お試し版・全員合計1日${limit}回`;
-    $('#sharedInfo').textContent = sharedState.ready
-      ? `${sharedState.model || '共有試用'}：本日あと${sharedState.remaining}回／全員合計${limit}回。日本時間0時にリセット。1ファイル200MBまで・合計500MBまで。失敗を含め、送信した試行を1回に数えます。`
-      : sharedState.reason || '共有試用は準備中です。管理者設定でAPIキーの登録・有効化が必要です。';
-    if (announce && !busy) status($('#sharedInfo').textContent);
+    const info = $('#sharedInfo');
+    info.classList.toggle('error', !!sharedState.codeInvalid);
+    $('#forgetCode').hidden = !accessCode;
+    if (sharedState.ready) {
+      $('#limitBadge').textContent = '◈ 利用コード確認済み';
+      info.textContent =
+        sharedState.remaining > 0
+          ? `利用コード確認済み：本日あと${sharedState.remaining}回（このコードは1日${sharedState.codeLimit}回まで）。日本時間0時にリセット。1ファイル200MBまで・合計500MBまで。`
+          : sharedState.codeRemaining <= 0
+            ? `このコードの本日の利用回数（${sharedState.codeLimit}回）を使い切りました。翌日0時（日本時間）に再開します。`
+            : '本日は全体の利用上限に達しました。翌日0時（日本時間）に再開します。';
+    } else {
+      $('#limitBadge').textContent = '◈ 招待コードでご利用いただけます';
+      info.textContent = sharedState.reason || '準備中です。';
+    }
+    if (announce && !busy) status(info.textContent, !!sharedState.codeInvalid);
   } catch {
-    $('#sharedInfo').textContent =
-      '共有試用の状態を取得できません。ページを再読み込みしてください。';
+    $('#sharedInfo').textContent = '利用状況を取得できません。ページを再読み込みしてください。';
   }
 }
+async function applyCode() {
+  const value = $('#accessCode').value.trim().toUpperCase();
+  $('#accessCode').value = value;
+  storeCode(value);
+  await refreshSharedStatus(true);
+  // 誤ったコードは端末に残さない
+  if (sharedState.codeInvalid) storeCode('');
+}
+$('#saveCode').onclick = applyCode;
+$('#accessCode').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    applyCode();
+  }
+});
+$('#forgetCode').onclick = async () => {
+  storeCode('');
+  $('#accessCode').value = '';
+  await refreshSharedStatus(true);
+};
 refreshSharedStatus(true);
 function importStatus(message, error = false) {
   $('#importStatus').textContent = message;
@@ -243,17 +290,12 @@ $('#cancel').onclick = () => controller?.abort();
 $('#generate').onclick = async () => {
   if (busy) return;
   if (!sharedState.ready) {
-    status(
-      sharedState.reason || '共有試用は準備中です。管理者によるAPIキーの登録をお待ちください。',
-      true,
-    );
+    status(sharedState.reason || '準備中です。', true);
+    if (sharedState.needsCode) $('#accessCode').focus();
     return;
   }
   if (sharedState.remaining <= 0) {
-    status(
-      `本日の共有試用${sharedState.limit || 5}回を使い切りました。翌日0時（日本時間）に再開します。`,
-      true,
-    );
+    status($('#sharedInfo').textContent, true);
     return;
   }
   if (!files.length && !$('#notes').value.trim()) {
@@ -275,6 +317,7 @@ $('#generate').onclick = async () => {
       prompt,
       {
         signal: controller.signal,
+        accessCode,
         onJob: (job) => {
           activeUpload = job;
         },

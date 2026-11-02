@@ -29,6 +29,13 @@
       "when": 1793599619810,
       "tag": "0003_reflective_namora",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1793600995474,
+      "tag": "0004_naive_shard",
+      "breakpoints": true
     }
   ]
 }
