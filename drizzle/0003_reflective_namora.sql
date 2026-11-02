@@ -1,1 +1,0 @@
-ALTER TABLE `api_settings` ADD `paid_tier` integer DEFAULT 0 NOT NULL;
