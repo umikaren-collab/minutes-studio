@@ -40,6 +40,10 @@ export function mediaType(file) {
     .toLowerCase();
   return extensions[ext] || null;
 }
+// 資料の上限（Google の Files API は有料枠で1ファイル20GBまで）
+export const FILE_LIMIT = 1024 ** 3;
+export const TOTAL_LIMIT = 2 * 1024 ** 3;
+export const MAX_FILES = 5;
 export function collectFiles(existing, incoming) {
   const files = [...existing],
     errors = [];
@@ -54,13 +58,14 @@ export function collectFiles(existing, incoming) {
         '未対応の形式です。WAV・M4A・MP3・AAC・FLAC・OGG・AIFF・WebM・MP4・PDFを選んでください。';
     else if (!Number.isFinite(f.size) || f.size <= 0)
       reason = 'ファイルが空か、読み取れません。端末にダウンロードしてから選び直してください。';
-    else if (f.size > 200 * 1024 ** 2) reason = '200MBを超えています。分割して選んでください。';
+    else if (f.size > FILE_LIMIT) reason = '1GBを超えています。分割して選んでください。';
     else if (files.some((x) => x.name === f.name && x.size === f.size)) {
       duplicates++;
       continue;
-    } else if (files.length >= 5) reason = '資料は最大5件です。不要な資料を削除してください。';
-    else if (total + f.size > 500 * 1024 ** 2)
-      reason = '合計500MBを超えています。不要な資料を削除してください。';
+    } else if (files.length >= MAX_FILES)
+      reason = '資料は最大5件です。不要な資料を削除してください。';
+    else if (total + f.size > TOTAL_LIMIT)
+      reason = '合計2GBを超えています。不要な資料を削除してください。';
     if (reason) {
       errors.push(`${name}：${reason}`);
       continue;
