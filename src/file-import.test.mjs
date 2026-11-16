@@ -29,7 +29,7 @@ test('空・容量超過・重複を判別する', () => {
   const r = collectFiles(existing, [
     f('録音.wav'),
     f('空.wav', '', 0),
-    f('大.wav', '', 201 * 1024 ** 2),
+    f('大.wav', '', 1024 ** 3 + 1),
   ]);
   assert.equal(r.duplicates, 1);
   assert.equal(r.files.length, 1);
@@ -43,9 +43,16 @@ test('ファイル数・合計容量の上限で既存ファイルを保持す�
   assert.equal(r.files.length, 5);
   assert.equal(r.errors.length, 1);
   const total = collectFiles(
-    [f('1.wav', '', 200 * 1024 ** 2), f('2.wav', '', 200 * 1024 ** 2)],
-    [f('3.wav', '', 101 * 1024 ** 2)],
+    [f('1.wav', '', 1024 ** 3), f('2.wav', '', 1024 ** 3 - 10)],
+    [f('3.wav', '', 11)],
   );
   assert.equal(total.files.length, 2);
-  assert.match(total.errors[0], /合計500MB/);
+  assert.match(total.errors[0], /合計2GB/);
+});
+
+test('1GBちょうどの資料は受け付ける', () => {
+  const r = collectFiles([], [f('会議.mp4', 'video/mp4', 1024 ** 3)]);
+  assert.equal(r.files.length, 1);
+  assert.equal(r.errors.length, 0);
+  assert.match(collectFiles([], [f('大.mp4', 'video/mp4', 1024 ** 3 + 1)]).errors[0], /1GB/);
 });

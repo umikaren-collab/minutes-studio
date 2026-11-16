@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createClient, GOOGLE, CHUNK_SIZE, normalizeModel, validKeyShape } from './gemini.mjs';
+import {
+  createClient,
+  GOOGLE,
+  CHUNK_SIZE,
+  CHUNK_RETRIES,
+  normalizeModel,
+  validKeyShape,
+} from './gemini.mjs';
 import { loadKeySettings, saveKeySettings, clearKeySettings } from './key-store.mjs';
 
 const KEY = 'AIza' + 'x'.repeat(35);
@@ -176,4 +183,99 @@ test('キーは「この端末に保存」のときだけ永続保存する', ()
   });
   clearKeySettings(env);
   assert.equal(loadKeySettings(env).key, '');
+});
+
+// 再開可能アップロードの「途中で失敗→届いた位置を問い合わせ→続きから送る」を真似る
+function flakyUpload(failures) {
+  // failures: 何回目の分割送信で、どう失敗させるか（kind: throw | 503 | 400、commit: 失敗前に届いたバイト数）
+  let got = 0,
+    size = 0,
+    sends = 0,
+    finished = null,
+    queries = 0;
+  const offsets = [];
+  const fetchImpl = async (url, opt = {}) => {
+    const u = String(url),
+      cmd = opt.headers?.['X-Goog-Upload-Command'];
+    if (u === GOOGLE + '/upload/v1beta/files') {
+      size = Number(opt.headers['X-Goog-Upload-Header-Content-Length']);
+      return json({}, 200, { 'x-goog-upload-url': `${GOOGLE}/upload/v1beta/files?upload_id=x` });
+    }
+    if (u.includes('upload_id=') && cmd === 'query') {
+      queries++;
+      if (finished) return json({ file: finished }, 200, { 'x-goog-upload-status': 'final' });
+      return json({}, 200, {
+        'x-goog-upload-status': 'active',
+        'x-goog-upload-size-received': String(got),
+      });
+    }
+    if (u.includes('upload_id=')) {
+      const offset = Number(opt.headers['X-Goog-Upload-Offset']);
+      offsets.push(offset);
+      assert.equal(offset, got, '届いた位置から送り直している');
+      const fail = failures[sends++];
+      if (fail) {
+        got += fail.commit || 0;
+        if (fail.finalize) {
+          got = size;
+          finished = { name: 'files/x', uri: GOOGLE + '/v1beta/files/x', state: 'ACTIVE' };
+        }
+        if (fail.kind === 'throw') throw new TypeError('Failed to fetch');
+        return json({ error: { message: 'x' } }, fail.kind === '503' ? 503 : 400);
+      }
+      got += opt.body.size;
+      if (cmd.includes('finalize')) {
+        assert.equal(got, size);
+        finished = { name: 'files/x', uri: GOOGLE + '/v1beta/files/x', state: 'ACTIVE' };
+        return json({ file: finished });
+      }
+      return json({});
+    }
+    if (u.endsWith('/v1beta/files/x')) return json({});
+    if (u.endsWith(':countTokens')) return json({ totalTokens: 10 });
+    if (u.endsWith(':generateContent'))
+      return json({
+        candidates: [{ content: { parts: [{ text: '本文' }] }, finishReason: 'STOP' }],
+      });
+    if (/\/v1beta\/models\/[\w.-]+$/.test(u)) return json({});
+    throw Error('unexpected ' + u);
+  };
+  return { fetchImpl, offsets, stats: () => ({ queries, got }) };
+}
+const run = (g, size = CHUNK_SIZE * 3) =>
+  createClient(KEY, { fetchImpl: g.fetchImpl, retryDelay: 1 }).generateMinutes({
+    files: [fakeFile('会議.mp4', size, 'video/mp4')],
+    prompt: 'x',
+    pollInterval: 1,
+  });
+
+test('通信が途切れても、届いた位置から送り直して完了する', async () => {
+  // 2回目の送信で半分だけ届いて切断、3回目はGoogle側の一時エラー
+  const g = flakyUpload([null, { kind: 'throw', commit: CHUNK_SIZE / 2 }, { kind: '503' }]);
+  const r = await run(g);
+  assert.equal(r.text, '本文');
+  assert.deepEqual(g.offsets, [
+    0,
+    CHUNK_SIZE,
+    CHUNK_SIZE * 1.5,
+    CHUNK_SIZE * 1.5,
+    CHUNK_SIZE * 2.5,
+  ]);
+  assert.equal(g.stats().queries, 2);
+});
+
+test('最後の送信で完了していたら、送り直さずに完了扱いにする', async () => {
+  const g = flakyUpload([null, null, { kind: 'throw', finalize: true }]);
+  assert.equal((await run(g)).text, '本文');
+  assert.equal(g.offsets.length, 3);
+});
+
+test('再試行の上限を超えたら止め、一時エラー以外はすぐに止める', async () => {
+  const many = flakyUpload(Array.from({ length: CHUNK_RETRIES + 1 }, () => ({ kind: '503' })));
+  await assert.rejects(run(many), /Google側で一時的なエラー/);
+  assert.equal(many.offsets.length, CHUNK_RETRIES + 1);
+  const bad = flakyUpload([{ kind: '400' }]);
+  await assert.rejects(run(bad), /転送に失敗しました/);
+  assert.equal(bad.offsets.length, 1);
+  assert.equal(bad.stats().queries, 0);
 });

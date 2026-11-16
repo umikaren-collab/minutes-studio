@@ -14,6 +14,8 @@ export const CHUNK_SIZE = 8 * 1024 ** 2;
 export const INPUT_LIMIT = 1000000;
 export const OUTPUT_LIMIT = 32768;
 export const FALLBACK_OUTPUT_LIMIT = 8192;
+// 大きいファイルの転送中に通信が途切れたときの再試行回数（1つの分割ごと）
+export const CHUNK_RETRIES = 3;
 
 const abortError = () => new DOMException('中止', 'AbortError');
 const sleep = (ms, signal) =>
@@ -53,7 +55,7 @@ export async function explain(response, fallback) {
   return fallback + (message ? `（${message.slice(0, 200)}）` : '');
 }
 
-export function createClient(key, { fetchImpl = (...a) => fetch(...a) } = {}) {
+export function createClient(key, { fetchImpl = (...a) => fetch(...a), retryDelay = 1000 } = {}) {
   const apiKey = String(key || '').trim();
   const authHeaders = { 'x-goog-api-key': apiKey };
 
@@ -99,6 +101,27 @@ export function createClient(key, { fetchImpl = (...a) => fetch(...a) } = {}) {
     }
   }
 
+  // 再開可能アップロードで、Google に届いた位置を問い合わせる。分からなければ null。
+  async function received(location, signal) {
+    try {
+      const r = await fetchImpl(location, {
+        method: 'POST',
+        headers: { 'X-Goog-Upload-Command': 'query' },
+        signal,
+      });
+      if (!r.ok) return null;
+      if (r.headers.get('x-goog-upload-status') === 'final') {
+        const file = (await r.json())?.file;
+        return file ? { file } : null;
+      }
+      const size = Number(r.headers.get('x-goog-upload-size-received'));
+      return Number.isSafeInteger(size) && size >= 0 ? { offset: size } : null;
+    } catch (e) {
+      if (e.name === 'AbortError') throw e;
+      return null;
+    }
+  }
+
   async function uploadFile(file, index, { signal, onChunk }) {
     const mime = mediaType(file);
     if (!mime) throw Error(`${file.name}：未対応の形式です。`);
@@ -122,31 +145,56 @@ export function createClient(key, { fetchImpl = (...a) => fetch(...a) } = {}) {
         'アップロード先を取得できませんでした。ブラウザーの拡張機能などが通信を妨げていないか確認してください。',
       );
     let offset = 0,
-      uploaded = null;
-    while (offset < file.size) {
+      uploaded = null,
+      attempts = 0;
+    while (offset < file.size && !uploaded) {
       if (signal?.aborted) throw abortError();
       const end = Math.min(offset + CHUNK_SIZE, file.size);
       const final = end === file.size;
-      const r = await fetchImpl(location, {
-        method: 'POST',
-        headers: {
-          'X-Goog-Upload-Offset': String(offset),
-          'X-Goog-Upload-Command': final ? 'upload, finalize' : 'upload',
-        },
-        body: file.slice(offset, end),
-        signal,
-      });
-      if (!r.ok) throw Error(await explain(r, `${file.name} の転送に失敗しました。`));
-      if (final) uploaded = (await r.json())?.file;
-      offset = end;
-      onChunk(offset);
+      let r = null;
+      try {
+        r = await fetchImpl(location, {
+          method: 'POST',
+          headers: {
+            'X-Goog-Upload-Offset': String(offset),
+            'X-Goog-Upload-Command': final ? 'upload, finalize' : 'upload',
+          },
+          body: file.slice(offset, end),
+          signal,
+        });
+      } catch (e) {
+        if (e.name === 'AbortError') throw e;
+      }
+      if (r?.ok) {
+        attempts = 0;
+        if (final) uploaded = (await r.json())?.file;
+        offset = end;
+        onChunk(offset);
+        continue;
+      }
+      // 通信切れ・Google側の一時エラーは、届いた位置を問い合わせて続きから送り直す
+      const retryable = !r || r.status >= 500 || r.status === 408 || r.status === 429;
+      if (!retryable || ++attempts > CHUNK_RETRIES)
+        throw Error(
+          r
+            ? await explain(r, `${file.name} の転送に失敗しました。`)
+            : `${file.name} の転送中に通信が途切れました。通信状況を確認してください。`,
+        );
+      await sleep(retryDelay * 2 ** (attempts - 1), signal);
+      const resumed = await received(location, signal);
+      if (!resumed)
+        throw Error(`${file.name} の転送中に通信が途切れました。通信状況を確認してください。`);
+      if (resumed.file) uploaded = resumed.file;
+      else offset = resumed.offset;
+      onChunk(uploaded ? file.size : offset);
     }
     if (!uploaded?.name || !uploaded?.uri)
       throw Error(`${file.name} の転送結果を確認できませんでした。`);
     return { name: uploaded.name, uri: uploaded.uri, mime, state: uploaded.state };
   }
 
-  async function waitActive(uploaded, { signal, timeoutMs = 12 * 60 * 1000, interval = 2500 }) {
+  // 1GB 近い動画は Google 側の処理に時間がかかるため、最大30分待つ
+  async function waitActive(uploaded, { signal, timeoutMs = 30 * 60 * 1000, interval = 2500 }) {
     const until = Date.now() + timeoutMs;
     for (const f of uploaded) {
       while (f.state !== 'ACTIVE') {
