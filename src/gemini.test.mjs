@@ -279,3 +279,55 @@ test('再試行の上限を超えたら止め、一時エラー以外はすぐ�
   assert.equal(bad.offsets.length, 1);
   assert.equal(bad.stats().queries, 0);
 });
+
+// 文字数の調整：短い→書き足し依頼→目安に届く
+function lengthGoogle(lengths) {
+  const bodies = [];
+  let i = 0;
+  const fetchImpl = async (url, opt = {}) => {
+    const u = String(url);
+    if (u.endsWith(':countTokens')) return json({ totalTokens: 10 });
+    if (u.endsWith(':generateContent')) {
+      bodies.push(JSON.parse(opt.body));
+      const n = lengths[Math.min(i++, lengths.length - 1)];
+      return json({
+        candidates: [{ content: { parts: [{ text: 'あ'.repeat(n) }] }, finishReason: 'STOP' }],
+      });
+    }
+    if (/\/v1beta\/models\/[\w.-]+$/.test(u)) return json({});
+    throw Error('unexpected ' + u);
+  };
+  return { fetchImpl, bodies };
+}
+const gen = (g, targetChars, onProgress) =>
+  createClient(KEY, { fetchImpl: g.fetchImpl }).generateMinutes({
+    prompt: 'x',
+    targetChars,
+    onProgress,
+  });
+
+test('文字数が足りなければ、前の版を渡して書き足しを頼む', async () => {
+  const g = lengthGoogle([1000, 1950]);
+  const phases = [];
+  const r = await gen(g, 2000, (p) => phases.push(p));
+  assert.equal(r.chars, 1950);
+  assert.equal(r.adjusted, 1);
+  assert.equal(g.bodies.length, 2);
+  const second = g.bodies[1].contents;
+  assert.equal(second.length, 3);
+  assert.equal(second[1].role, 'model');
+  assert.equal(second[1].parts[0].text.length, 1000);
+  assert.match(second[2].parts[0].text, /約1000字/);
+  assert.ok(phases.some((p) => p.phase === 'adjusting' && p.chars === 1000 && p.target === 2000));
+});
+
+test('目安なし・範囲内なら1回だけ、調整は最大2回、崩れた版は使わない', async () => {
+  assert.equal((await gen(lengthGoogle([500]), null)).adjusted, 0);
+  assert.equal((await gen(lengthGoogle([1900]), 2000)).adjusted, 0);
+  const many = lengthGoogle([800, 1200, 1500, 1900]);
+  const r = await gen(many, 2000);
+  assert.equal(many.bodies.length, 3);
+  assert.equal(r.chars, 1500);
+  const broken = await gen(lengthGoogle([1000, 100]), 2000);
+  assert.equal(broken.chars, 1000);
+});
