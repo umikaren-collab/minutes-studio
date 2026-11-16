@@ -1,5 +1,6 @@
 // ブラウザから Google Gemini API へ直接送る。サーバーは経由しない。
 import { mediaType } from './file-import.mjs';
+import { MAX_ADJUST, adjustRequest, countChars } from './length.mjs';
 
 export const GOOGLE = 'https://generativelanguage.googleapis.com';
 export const MODELS = [
@@ -217,6 +218,7 @@ export function createClient(key, { fetchImpl = (...a) => fetch(...a), retryDela
     prompt,
     model,
     signal,
+    targetChars = null,
     onProgress = () => {},
     onFiles = () => {},
     pollInterval,
@@ -277,30 +279,50 @@ export function createClient(key, { fetchImpl = (...a) => fetch(...a), retryDela
       const usage = await count.json();
       if (!Number.isFinite(usage.totalTokens) || usage.totalTokens > lim.input)
         throw Error('選択モデルの入力上限を超えています。資料を分けて作成してください。');
-      const r = await fetchImpl(`${base}:generateContent`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          contents,
-          generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: lim.output,
-            ...(model === 'gemini-2.5-flash' ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
-          },
-        }),
-        signal,
-      });
-      if (!r.ok) throw Error(await explain(r, 'AIの作成に失敗しました。'));
-      const data = await r.json();
-      const candidate = data.candidates?.[0];
-      const text = candidate?.content?.parts
-        ?.filter((x) => !x.thought)
-        .map((x) => x.text || '')
-        .join('\n')
-        .trim();
-      if (!text)
+      const generate = async (history) => {
+        const r = await fetchImpl(`${base}:generateContent`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            contents: history,
+            generationConfig: {
+              temperature: 0.2,
+              maxOutputTokens: lim.output,
+              ...(model === 'gemini-2.5-flash' ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+            },
+          }),
+          signal,
+        });
+        if (!r.ok) throw Error(await explain(r, 'AIの作成に失敗しました。'));
+        const candidate = (await r.json()).candidates?.[0];
+        const text = candidate?.content?.parts
+          ?.filter((x) => !x.thought)
+          .map((x) => x.text || '')
+          .join('\n')
+          .trim();
+        return { text, truncated: candidate?.finishReason === 'MAX_TOKENS' };
+      };
+      let result = await generate(contents);
+      if (!result.text)
         throw Error('本文を生成できませんでした。資料の内容やAPIの利用状態を確認してください。');
-      return { text, truncated: candidate.finishReason === 'MAX_TOKENS' };
+      // 文字数の目安があれば、外れたときに同じ資料を見ながら書き足し・削りを頼む
+      let history = contents,
+        adjusted = 0;
+      for (; adjusted < MAX_ADJUST && !result.truncated; adjusted++) {
+        const ask = adjustRequest(result.text, targetChars);
+        if (!ask) break;
+        onProgress({ phase: 'adjusting', chars: countChars(result.text), target: targetChars });
+        history = [
+          ...history,
+          { role: 'model', parts: [{ text: result.text }] },
+          { role: 'user', parts: [{ text: ask }] },
+        ];
+        const next = await generate(history);
+        // 調整で短く崩れた・空になった場合は、前の版を使う
+        if (!next.text || countChars(next.text) < countChars(result.text) * 0.5) break;
+        result = next;
+      }
+      return { ...result, chars: countChars(result.text), adjusted };
     } finally {
       const results = await Promise.all(uploaded.map((u) => deleteFile(u.name)));
       onFiles([]);
